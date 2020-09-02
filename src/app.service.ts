@@ -1,14 +1,14 @@
 import { Injectable, HttpService } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, FindManyOptions, FindConditions, Raw } from 'typeorm';
 import * as moment from 'moment';
 
 import countries from './countries';
 
 import { Country, Provider, Address, Taxonomy } from './entities';
 import { EnumerationType, Gender, AddressPurpose } from './enums';
-import { NpiResponse } from './interfaces/npi.response';
+import { GetProviders, NpiResponse, PaginatedResponse, ProviderResponse } from './interfaces';
 
 @Injectable()
 export class AppService {
@@ -142,6 +142,37 @@ export class AppService {
       console.log(e);
 
       return { success: false };
+    }
+  }
+
+  async getProviders(query: GetProviders): Promise<PaginatedResponse<ProviderResponse>> {
+    const where: FindConditions<Provider> = {};
+
+    if (query.enumeration_type) {
+      where.enumerationType = query.enumeration_type === 'NPI-1' ?
+        EnumerationType.NPI1 :
+        EnumerationType.NPI2;
+    }
+
+    if (query.name) {
+      where.name = Raw(alias => `${alias} ILIKE '%${query.name}%'`);
+    }
+
+    if (query.number) {
+      where.number = parseInt(query.number);
+    }
+
+    const [providers, total] = await this.providerRepository
+      .findAndCount({
+        where,
+        take: parseInt(query.limit),
+        skip: parseInt(query.offset)
+      });
+
+    return {
+      items: providers.map(provider => new ProviderResponse(provider)),
+      total,
+      hasMore: total - (parseInt(query.offset) + parseInt(query.limit)) > 0
     }
   }
 }

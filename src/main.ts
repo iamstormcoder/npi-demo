@@ -1,3 +1,5 @@
+
+import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import * as helmet from 'helmet';
 
@@ -9,6 +11,13 @@ async function bootstrap() {
   app.enableCors();
 
   app.use(helmet());
+
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      transform: true,
+    }),
+  );
 
   await app.listen(3000);
 }
